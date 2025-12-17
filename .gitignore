@@ -212,6 +212,7 @@ outputs/
 
 # Log files (already covered by *.log above, but explicit for clarity)
 rera_processing.log
+rera_processing_s3.log
 *.log
 
 # OS files

@@ -1,0 +1,13 @@
+# Core PDF processing
+pdfplumber>=0.10.0
+pymupdf>=1.23.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
+pandas>=2.0.0
+
+# AWS S3 support
+boto3>=1.28.0
+botocore>=1.31.0
+
+# Standard library dependencies are included in Python 3.11+
+
