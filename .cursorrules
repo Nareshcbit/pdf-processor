@@ -1,0 +1,66 @@
+# .cursorrules → RERA Karnataka PDFs → Fully Adaptive JSON (No Fixed Schema)
+
+You are helping build a 100% adaptive PDF-to-JSON converter for RERA Karnataka project PDFs.
+Every PDF has a completely different layout, fonts, tables, key-value pairs, or free text.
+Never assume any fixed keys or schema.
+
+Core Philosophy
+- Goal: Extract ALL readable content and turn it into the most logical, hierarchical JSON possible.
+- Preserve meaning and structure as much as visible in the PDF.
+- Never drop data. If unsure where something belongs, put it in a catch-all section or as raw text with context.
+- Output must be valid JSON and human-readable.
+
+Extraction Strategy (in exact order of priority)
+1. Use pdfplumber first → best for text + tables + precise coordinates.
+2. Fall back to PyMuPDF (fitz) only if pdfplumber fails on a file.
+3. Detect scanned/image-based PDFs → auto-run OCR with pytesseract if no text layer.
+4. Extract in this order:
+   - All tables (even if messy) → convert to list of lists or list of dicts when headers are detectable
+   - All key-value-like lines (anything with “:”, “-”, “→”, or bold key followed by value)
+   - Section headings (large/bold text)
+   - Bullet points and numbered lists
+   - Paragraphs and free text (grouped by vertical position to preserve page sections)
+   - Page numbers, headers, footers → strip or put under "_metadata"
+
+Intelligent JSON Building Rules
+- Start with this minimal skeleton, then fill dynamically:
+  {
+    "source_file": "name.pdf",
+    "extracted_pages": [],
+    "raw_text_by_page": [],
+    "detected_tables": [],
+    "key_value_pairs": {},
+    "sections": {},                 # auto-detected by headings
+    "unstructured_text": [],
+    "metadata": {                   # page count, scanned?, etc.
+      "total_pages": int,
+      "is_scanned": bool,
+      "extraction_date": "ISO string"
+    }
+  }
+- When a clear heading is found (e.g., “Project Details”, “Bank Account Details”, “Amenities”), create a new section in "sections" using that heading as key (lower_snake_case, no special chars).
+- When obvious key-value pairs are found → put directly into the matching section or into "key_value_pairs" at top level.
+- When tables have a clear caption or preceding heading → nest the table under that section.
+- When nothing matches → push raw lines into "unstructured_text" with page number and y-position for context.
+
+Code Style & Requirements
+- Python 3.11+
+- Required libraries: pdfplumber, pymupdf, pytesseract, pillow, pandas (optional for table cleaning)
+- Always write a single function: adaptive_pdf_to_json(pdf_path: str) -> dict
+- Plus a batch function: batch_convert(folder_in: str, folder_out: str)
+- Heavy use of logging (show what was found on each page)
+- Never crash on a single bad PDF — skip or save partial result with warning
+- Make the output JSON pretty-printed (indent=2)
+
+When Generating Code
+- First version: pure pdfplumber + smart text grouping + table detection
+- Second version (if needed): add OCR fallback
+- Third version (if needed): add heading detection using font size / boldness
+- Always include a main block so user can run it immediately:
+  if __name__ == "__main__":
+      batch_convert("input_pdfs/", "output_json/")
+
+Final Response Style
+- Give complete, copy-paste-ready scripts
+- Add lots of comments explaining the adaptive logic
+- End every answer with: “Test on 5–10 diverse PDFs first — then tell me what looks wrong and I’ll make it smarter.”

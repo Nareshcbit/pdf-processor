@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RERA Karnataka Projects Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        #header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        #header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        #controls {
+            background: white;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        #search {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        #search:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        select {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        #stats {
+            padding: 10px 20px;
+            background: #f5f5f5;
+            font-size: 13px;
+            color: #666;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        #map {
+            height: calc(100vh - 180px);
+            width: 100%;
+        }
+        
+        .info-window {
+            max-width: 400px;
+            font-size: 14px;
+        }
+        
+        .info-window h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+        
+        .info-window .info-row {
+            margin: 8px 0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .info-window .info-label {
+            font-weight: 600;
+            color: #555;
+            min-width: 120px;
+        }
+        
+        .info-window .info-value {
+            color: #333;
+            flex: 1;
+        }
+        
+        .info-window table {
+            width: 100%;
+            margin-top: 10px;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        
+        .info-window table th {
+            background: #667eea;
+            color: white;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .info-window table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .info-window table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-ongoing {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .status-new {
+            background: #2196f3;
+            color: white;
+        }
+        
+        .status-delayed {
+            background: #f44336;
+            color: white;
+        }
+        
+        .status-completed {
+            background: #9e9e9e;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            #controls {
+                flex-direction: column;
+            }
+            
+            #search {
+                width: 100%;
+            }
+            
+            .filter-group {
+                width: 100%;
+                flex-direction: column;
+            }
+            
+            select {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🏗️ RERA Karnataka Projects Map</h1>
+        <p>Interactive map of registered real estate projects in Karnataka</p>
+    </div>
+    
+    <div id="controls">
+        <input type="text" id="search" placeholder="🔍 Search projects by name...">
+        <div class="filter-group">
+            <select id="statusFilter">
+                <option value="">All Status</option>
+                <option value="Ongoing">Ongoing</option>
+                <option value="New Project Launch">New Project Launch</option>
+                <option value="Completed">Completed</option>
+            </select>
+            <select id="districtFilter">
+                <option value="">All Districts</option>
+            </select>
+            <select id="talukFilter">
+                <option value="">All Taluks</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="stats">
+        <span id="totalProjects">Total Projects: 0</span>
+        <span id="visibleProjects">Visible: 0</span>
+        <span id="totalPlots">Total Plots: 0</span>
+        <span id="totalCost">Total Investment: ₹0</span>
+    </div>
+    
+    <div id="map"></div>
+    
+    <!-- Replace YOUR_API_KEY with your Google Maps API key -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+    <script>
+        let map;
+        let markers = [];
+        let allProjects = [];
+        let visibleProjects = [];
+        
+        // Initialize map
+        function initMap() {
+            // Center on Bengaluru
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 13.0, lng: 77.6 },
+                zoom: 11,
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            });
+            
+            // Load projects from individual JSON files
+            loadProjects();
+        }
+        
+        // Load all project JSON files
+        async function loadProjects() {
+            // First, try to get list of project files from a manifest or load all_projects.json
+            // If that fails, try to load known project files
+            try {
+                // Try loading all_projects.json first (if it exists)
+                const consolidatedResponse = await fetch('outputs/all_projects.json');
+                if (consolidatedResponse.ok) {
+                    const projects = await consolidatedResponse.json();
+                    allProjects = Array.isArray(projects) ? projects : [projects];
+                    allProjects = allProjects.filter(p => p && p.latitude && p.longitude);
+                    populateFilters();
+                    createMarkers();
+                    updateStats();
+                    return;
+                }
+            } catch (e) {
+                console.log('all_projects.json not found, loading individual files...');
+            }
+            
+            // Fallback: Load individual project files
+            // These should match the PDF filenames (without .pdf extension)
+            const projectFiles = [
+                'outputs/projects/PRM_KA_RERA_1250_303_PR_240925_008116.json',
+                'outputs/projects/PRM_KA_RERA_1250_303_PR_250222_004734.json',
+                'outputs/projects/PRM_KA_RERA_1250_303_PR_250924_007069.json',
+                'outputs/projects/PRM_KA_RERA_1250_303_PR_250322_004783.json'
+            ];
+            
+            try {
+                const promises = projectFiles.map(file => 
+                    fetch(file)
+                        .then(res => {
+                            if (!res.ok) return null;
+                            return res.json();
+                        })
+                        .catch(err => {
+                            console.warn(`Failed to load ${file}:`, err);
+                            return null;
+                        })
+                );
+                
+                const projects = await Promise.all(promises);
+                allProjects = projects.filter(p => p && p.latitude && p.longitude);
+                
+                if (allProjects.length === 0) {
+                    throw new Error('No projects loaded');
+                }
+                
+                // Populate filters
+                populateFilters();
+                
+                // Create markers
+                createMarkers();
+                
+                // Update stats
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                alert('Error loading project data. Please ensure JSON files are in outputs/projects/ or run extract_project_data.py first.');
+            }
+        }
+        
+        // Populate filter dropdowns
+        function populateFilters() {
+            const districts = new Set();
+            const taluks = new Set();
+            
+            allProjects.forEach(project => {
+                if (project.district) districts.add(project.district);
+                if (project.taluk) taluks.add(project.taluk);
+            });
+            
+            const districtSelect = document.getElementById('districtFilter');
+            Array.from(districts).sort().forEach(district => {
+                const option = document.createElement('option');
+                option.value = district;
+                option.textContent = district;
+                districtSelect.appendChild(option);
+            });
+            
+            const talukSelect = document.getElementById('talukFilter');
+            Array.from(taluks).sort().forEach(taluk => {
+                const option = document.createElement('option');
+                option.value = taluk;
+                option.textContent = taluk;
+                talukSelect.appendChild(option);
+            });
+        }
+        
+        // Create markers for all projects
+        function createMarkers() {
+            // Clear existing markers
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+            visibleProjects = [];
+            
+            allProjects.forEach(project => {
+                if (shouldShowProject(project)) {
+                    const marker = new google.maps.Marker({
+                        position: { lat: project.latitude, lng: project.longitude },
+                        map: map,
+                        title: project.project_name,
+                        icon: {
+                            url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                            scaledSize: new google.maps.Size(32, 32)
+                        }
+                    });
+                    
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: createInfoWindowContent(project)
+                    });
+                    
+                    marker.addListener('click', () => {
+                        infoWindow.open(map, marker);
+                    });
+                    
+                    markers.push(marker);
+                    visibleProjects.push(project);
+                }
+            });
+            
+            updateStats();
+        }
+        
+        // Check if project should be shown based on filters
+        function shouldShowProject(project) {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const districtFilter = document.getElementById('districtFilter').value;
+            const talukFilter = document.getElementById('talukFilter').value;
+            
+            // Search filter
+            if (searchTerm && !project.project_name.toLowerCase().includes(searchTerm)) {
+                return false;
+            }
+            
+            // Status filter
+            if (statusFilter && project.status !== statusFilter) {
+                return false;
+            }
+            
+            // District filter
+            if (districtFilter && project.district !== districtFilter) {
+                return false;
+            }
+            
+            // Taluk filter
+            if (talukFilter && project.taluk !== talukFilter) {
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Create info window content
+        function createInfoWindowContent(project) {
+            const statusClass = getStatusClass(project.status);
+            const statusBadge = project.status ? 
+                `<span class="status-badge ${statusClass}">${project.status}</span>` : '';
+            
+            let plotTypesTable = '';
+            if (project.plot_types && project.plot_types.length > 0) {
+                plotTypesTable = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Plot Type</th>
+                                <th>Count</th>
+                                <th>Area (sqm)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${project.plot_types.slice(0, 5).map(pt => `
+                                <tr>
+                                    <td>${pt.type || 'N/A'}</td>
+                                    <td>${pt.number || 0}</td>
+                                    <td>${pt.area ? pt.area.toLocaleString() : 0}</td>
+                                </tr>
+                            `).join('')}
+                            ${project.plot_types.length > 5 ? `<tr><td colspan="3" style="text-align: center; font-style: italic;">... and ${project.plot_types.length - 5} more types</td></tr>` : ''}
+                        </tbody>
+                    </table>
+                `;
+            }
+            
+            return `
+                <div class="info-window">
+                    <h3>${project.project_name || 'Unnamed Project'}</h3>
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value">${statusBadge}</span>
+                    </div>
+                    ${project.description ? `
+                        <div class="info-row">
+                            <span class="info-label">Description:</span>
+                            <span class="info-value">${project.description}</span>
+                        </div>
+                    ` : ''}
+                    <div class="info-row">
+                        <span class="info-label">Type:</span>
+                        <span class="info-value">${project.type || 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total Plots:</span>
+                        <span class="info-value">${project.total_plots || 0}</span>
+                    </div>
+                    ${project.completion_date ? `
+                        <div class="info-row">
+                            <span class="info-label">Completion:</span>
+                            <span class="info-value">${project.completion_date}</span>
+                        </div>
+                    ` : ''}
+                    <div class="info-row">
+                        <span class="info-label">District:</span>
+                        <span class="info-value">${project.district || 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Taluk:</span>
+                        <span class="info-value">${project.taluk || 'N/A'}</span>
+                    </div>
+                    ${project.land_area ? `
+                        <div class="info-row">
+                            <span class="info-label">Land Area:</span>
+                            <span class="info-value">${project.land_area.toLocaleString()} sqm</span>
+                        </div>
+                    ` : ''}
+                    ${project.total_cost ? `
+                        <div class="info-row">
+                            <span class="info-label">Total Cost:</span>
+                            <span class="info-value">₹${project.total_cost.toLocaleString()}</span>
+                        </div>
+                    ` : ''}
+                    ${project.water_source ? `
+                        <div class="info-row">
+                            <span class="info-label">Water Source:</span>
+                            <span class="info-value">${project.water_source}</span>
+                        </div>
+                    ` : ''}
+                    ${plotTypesTable}
+                </div>
+            `;
+        }
+        
+        // Get CSS class for status badge
+        function getStatusClass(status) {
+            if (!status) return 'status-ongoing';
+            const s = status.toLowerCase();
+            if (s.includes('ongoing')) return 'status-ongoing';
+            if (s.includes('new') || s.includes('launch')) return 'status-new';
+            if (s.includes('completed') || s.includes('complete')) return 'status-completed';
+            if (s.includes('delayed')) return 'status-delayed';
+            return 'status-ongoing';
+        }
+        
+        // Update statistics
+        function updateStats() {
+            const totalPlots = visibleProjects.reduce((sum, p) => sum + (p.total_plots || 0), 0);
+            const totalCost = visibleProjects.reduce((sum, p) => sum + (p.total_cost || 0), 0);
+            
+            document.getElementById('totalProjects').textContent = `Total Projects: ${allProjects.length}`;
+            document.getElementById('visibleProjects').textContent = `Visible: ${visibleProjects.length}`;
+            document.getElementById('totalPlots').textContent = `Total Plots: ${totalPlots.toLocaleString()}`;
+            document.getElementById('totalCost').textContent = `Total Investment: ₹${totalCost.toLocaleString()}`;
+        }
+        
+        // Event listeners for filters
+        document.getElementById('search').addEventListener('input', createMarkers);
+        document.getElementById('statusFilter').addEventListener('change', createMarkers);
+        document.getElementById('districtFilter').addEventListener('change', createMarkers);
+        document.getElementById('talukFilter').addEventListener('change', createMarkers);
+    </script>
+</body>
+</html>
+

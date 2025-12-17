@@ -209,3 +209,20 @@ __marimo__/
 # Project-specific: Input and output folders
 inputs/
 outputs/
+
+# Log files (already covered by *.log above, but explicit for clarity)
+rera_processing.log
+*.log
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Processed data files (already covered by outputs/ above)
+# Allow JSON schema/config files if needed in future
+*.json
+!package.json  # Allow package.json if needed
+!tsconfig.json  # Allow tsconfig.json if needed
